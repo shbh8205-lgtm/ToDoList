@@ -1,13 +1,19 @@
 import axios from 'axios';
 
-// הגדרת כתובת ה-API כברירת מחדל לכל הקריאות
 axios.defaults.baseURL = "http://localhost:5111";
 
-// הגדרת interceptor לטיפול בשגיאות ב-Response
+// --- מנגנון הזרקת הטוקן לכל בקשה ---
+axios.interceptors.request.use(config => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 axios.interceptors.response.use(
-  response => response, // אם התגובה תקינה, פשוט מחזירים אותה
+  response => response,
   error => {
-    // כאן אנחנו תופסים כל שגיאה שחוזרת מה-API (כמו 404, 500 וכו')
     console.error('API Error:', {
       message: error.message,
       status: error.response?.status,
@@ -18,6 +24,14 @@ axios.interceptors.response.use(
 );
 
 const taskService = {
+  // --- הוספה: פונקציית התחברות ---
+    login: async (userName, password) => {
+        const result = await axios.post("/login", { userName, password });
+        if (result.data.token) {
+            localStorage.setItem('token', result.data.token); // שמירה בדפדפן
+        }
+        return result.data;
+    },
   // שליפת כל המשימות
   getTasks: async () => {
     const result = await axios.get("/items");
@@ -31,8 +45,9 @@ const taskService = {
   },
 
   // עדכון מצב משימה (השלמה/ביטול) - PUT
-  setCompleted: async (id, isComplete) => {
-    const result = await axios.put(`/items/${id}`, { isComplete });
+  setCompleted: async (id, todo) => {
+
+    const result = await axios.put(`/items/${id}`, todo);
     return result.data;
   },
 

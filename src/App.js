@@ -1,60 +1,100 @@
 import React, { useEffect, useState } from 'react';
 import service from './service.js';
+import Login from './Login'; // וודאי שיצרת את הקובץ הזה כפי שכתבתי קודם
 
 function App() {
   const [newTodo, setNewTodo] = useState("");
   const [todos, setTodos] = useState([]);
+  
+  // --- הוספה: ניהול מצב התחברות ---
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
   async function getTodos() {
-    const todos = await service.getTasks();
-    setTodos(todos);
+    try {
+      const todos = await service.getTasks();
+      setTodos(todos);
+    } catch (error) {
+      console.error("נכשל בטעינת משימות", error);
+      // אם קיבלנו שגיאת הרשאות, נוציא את המשתמש ללוגין
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    }
   }
 
   async function createTodo(e) {
     e.preventDefault();
+    if (!newTodo.trim()) return;
     await service.addTask(newTodo);
-    setNewTodo("");//clear input
-    await getTodos();//refresh tasks list (in order to see the new one)
+    setNewTodo("");
+    await getTodos();
   }
 
   async function updateCompleted(todo, isComplete) {
-    await service.setCompleted(todo.id, isComplete);
-    await getTodos();//refresh tasks list (in order to see the updated one)
+    todo.isComplete=isComplete
+    await service.setCompleted(todo.id, todo);
+    await getTodos();
   }
 
   async function deleteTodo(id) {
     await service.deleteTask(id);
-    await getTodos();//refresh tasks list
+    await getTodos();
+  }
+
+  // --- הוספה: פונקציית התנתקות ---
+  function handleLogout() {
+    localStorage.removeItem('token');
+    setIsLoggedIn(false);
+    setTodos([]);
   }
 
   useEffect(() => {
-    getTodos();
-  }, []);
+    if (isLoggedIn) {
+      getTodos();
+    }
+  }, [isLoggedIn]); // יתבצע בכל פעם שמצב ההתחברות משתנה
+
+  // --- תנאי: אם לא מחובר, הצג מסך לוגין ---
+  if (!isLoggedIn) {
+    return <Login onLoginSuccess={() => setIsLoggedIn(true)} />;
+  }
 
   return (
     <section className="todoapp">
       <header className="header">
-        <h1>todos</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px' }}>
+             <h1>todos</h1>
+             <button onClick={handleLogout} className="logout-btn">התנתק</button>
+        </div>
         <form onSubmit={createTodo}>
-          <input className="new-todo" placeholder="Well, let's take on the day" value={newTodo} onChange={(e) => setNewTodo(e.target.value)} />
+          <input 
+            className="new-todo" 
+            placeholder="Well, let's take on the day" 
+            value={newTodo} 
+            onChange={(e) => setNewTodo(e.target.value)} 
+          />
         </form>
       </header>
+      
       <section className="main" style={{ display: "block" }}>
         <ul className="todo-list">
-          {todos.map(todo => {
-            return (
-              <li className={todo.isComplete ? "completed" : ""} key={todo.id}>
-                <div className="view">
-                  <input className="toggle" type="checkbox" defaultChecked={todo.isComplete} onChange={(e) => updateCompleted(todo, e.target.checked)} />
-                  <label>{todo.name}</label>
-                  <button className="destroy" onClick={() => deleteTodo(todo.id)}></button>
-                </div>
-              </li>
-            );
-          })}
+          {todos.map(todo => (
+            <li className={todo.isComplete ? "completed" : ""} key={todo.id}>
+              <div className="view">
+                <input 
+                  className="toggle" 
+                  type="checkbox" 
+                  checked={todo.isComplete} 
+                  onChange={(e) => updateCompleted(todo, e.target.checked)} 
+                />
+                <label>{todo.name}</label>
+                <button className="destroy" onClick={() => deleteTodo(todo.id)}></button>
+              </div>
+            </li>
+          ))}
         </ul>
       </section>
-    </section >
+    </section>
   );
 }
 

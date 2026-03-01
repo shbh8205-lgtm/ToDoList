@@ -3,11 +3,15 @@ using System.Collections.Generic;
 
 namespace TodoApi;
 
-public partial class Item
+public class Item
 {
     public int Id { get; set; }
+    public string Name { get; set; }
+    public bool IsComplete { get; set; }
 
-    public string? Name { get; set; }
+    // שדה המפתח הזר
+    public int UserId { get; set; }
 
-    public bool? IsComplete { get; set; }
+    // מאפיין ניווט - מאפשר ל-EF להבין את הקשר
+    public User? User { get; set; } 
 }
