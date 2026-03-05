@@ -1,4 +1,12 @@
+# .NET (Server)
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+
+# React (Client)
 node_modules/
-**/node_modules/
-bin/
-obj/
+build/
+.env.local
+.env.development.local
