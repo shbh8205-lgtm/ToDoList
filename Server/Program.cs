@@ -38,26 +38,41 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 1. שלוף את מחרוזת החיבור
-var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
 
+
+
+// 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
+var rawConnectionString = builder.Configuration.GetConnectionString("ToDoDB");
+
+// 2. הדפסת דיבאג ללוג - זה יגיד לנו מה Render באמת שולח
+if (!string.IsNullOrEmpty(rawConnectionString))
+{
+    var censored = System.Text.RegularExpressions.Regex.Replace(rawConnectionString, @"password=.*?;", "password=***;", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    Console.WriteLine($"[DEBUG] Connection String in use: {censored}");
+}
+
+// 3. הגדרת ה-DbContext עם גרסה ידנית לעקיפת השגיאה
 builder.Services.AddDbContext<ToDoDbContext>(options => {
-    if (!string.IsNullOrEmpty(connectionString))
+    if (!string.IsNullOrEmpty(rawConnectionString))
     {
-        // 2. הגדרת גרסה ידנית במקום AutoDetect
-        // רוב שירותי הענן (כמו Clever Cloud) משתמשים ב-MySQL 8.0
+        // הגדרת גרסה 8.0.31 (מתאים לרוב שירותי הענן כמו Clever Cloud)
         var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
         
-        options.UseMySql(connectionString, serverVersion, mysqlOptions => 
+        options.UseMySql(rawConnectionString, serverVersion, mysqlOptions => 
         {
-            // הגדרות נוספות לשיפור היציבות בענן
             mysqlOptions.EnableRetryOnFailure(
                 maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
+                maxRetryDelay: TimeSpan.FromSeconds(10),
                 errorNumbersToAdd: null);
         });
     }
 });
+
+
+
+
+
+
 
 // 4. CORS - פתוח לכולם (מתאים ל-OPTIONS 204 שראינו)
 builder.Services.AddCors(options =>
