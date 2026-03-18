@@ -41,36 +41,42 @@ builder.Services.AddAuthorization();
 
 
 
-// 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
-var rawConnectionString = builder.Configuration.GetConnectionString("ToDoDB");
+// // 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
+// var rawConnectionString = builder.Configuration.GetConnectionString("ToDoDB");
 
-// 2. הדפסת דיבאג ללוג - זה יגיד לנו מה Render באמת שולח
-if (!string.IsNullOrEmpty(rawConnectionString))
-{
-    var censored = System.Text.RegularExpressions.Regex.Replace(rawConnectionString, @"password=.*?;", "password=***;", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-    Console.WriteLine($"[DEBUG] Connection String in use: {censored}");
-}
+// // 2. הדפסת דיבאג ללוג - זה יגיד לנו מה Render באמת שולח
+// if (!string.IsNullOrEmpty(rawConnectionString))
+// {
+//     var censored = System.Text.RegularExpressions.Regex.Replace(rawConnectionString, @"password=.*?;", "password=***;", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+//     Console.WriteLine($"[DEBUG] Connection String in use: {censored}");
+// }
 
-// 3. הגדרת ה-DbContext עם גרסה ידנית לעקיפת השגיאה
-builder.Services.AddDbContext<ToDoDbContext>(options => {
-    if (!string.IsNullOrEmpty(rawConnectionString))
-    {
-        // הגדרת גרסה 8.0.31 (מתאים לרוב שירותי הענן כמו Clever Cloud)
-        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
+// // 3. הגדרת ה-DbContext עם גרסה ידנית לעקיפת השגיאה
+// builder.Services.AddDbContext<ToDoDbContext>(options => {
+//     if (!string.IsNullOrEmpty(rawConnectionString))
+//     {
+//         // הגדרת גרסה 8.0.31 (מתאים לרוב שירותי הענן כמו Clever Cloud)
+//         var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
         
-        options.UseMySql(rawConnectionString, serverVersion, mysqlOptions => 
-        {
-            mysqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
-                errorNumbersToAdd: null);
-        });
-    }
+//         options.UseMySql(rawConnectionString, serverVersion, mysqlOptions => 
+//         {
+//             mysqlOptions.EnableRetryOnFailure(
+//                 maxRetryCount: 5,
+//                 maxRetryDelay: TimeSpan.FromSeconds(10),
+//                 errorNumbersToAdd: null);
+//         });
+//     }
+// });
+
+
+
+// במקום לקרוא מ-Render, נשים את המחרוזת ישירות (תחליף את הכוכביות בסיסמה שלך)
+var hardcodedConnectionString = "server=bs0xtmdarowtzbkwwoib-mysql.services.clever-cloud.com;port=3306;database=bs0xtmdarowtzbkwwoib;uid=upzcfm9n115abbra;pwd=RHzhMfu5mOlaJBVCbt9t;SslMode=none;";
+
+builder.Services.AddDbContext<ToDoDbContext>(options => {
+    var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
+    options.UseMySql(hardcodedConnectionString, serverVersion);
 });
-
-
-
-
 
 
 
