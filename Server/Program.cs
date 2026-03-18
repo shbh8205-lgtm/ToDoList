@@ -38,24 +38,24 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// שליפת מחרוזת החיבור
+// 1. שלוף את מחרוזת החיבור
 var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
     if (!string.IsNullOrEmpty(connectionString))
     {
-        // --- תיקון קריטי כאן ---
-        // אנחנו בונים את המחרוזת מחדש ומוודאים שרק פרמטרים נתמכים עוברים
-        var sb = new MySqlConnector.MySqlConnectionStringBuilder(connectionString);
+        // 2. הגדרת גרסה ידנית במקום AutoDetect
+        // רוב שירותי הענן (כמו Clever Cloud) משתמשים ב-MySQL 8.0
+        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
         
-        // הסרת פרמטרים שגורמים לשגיאות בענן
-        sb.Remove("name"); 
-        sb.Remove("Name");
-        
-        // וידוי שמות שדות סטנדרטיים
-        var finalConnectionString = sb.ConnectionString;
-
-        options.UseMySql(finalConnectionString, ServerVersion.AutoDetect(finalConnectionString));
+        options.UseMySql(connectionString, serverVersion, mysqlOptions => 
+        {
+            // הגדרות נוספות לשיפור היציבות בענן
+            mysqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+        });
     }
 });
 
