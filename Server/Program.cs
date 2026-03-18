@@ -41,8 +41,8 @@ builder.Services.AddAuthorization();
 
 
 
-// // 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
-// var rawConnectionString = builder.Configuration.GetConnectionString("ToDoDB");
+// 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
+var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
 
 // // 2. הדפסת דיבאג ללוג - זה יגיד לנו מה Render באמת שולח
 // if (!string.IsNullOrEmpty(rawConnectionString))
@@ -71,7 +71,7 @@ builder.Services.AddAuthorization();
 
 
 // קריאה ישירה ממשתני הסביבה (עוקף את builder.Configuration הבעייתי)
-var connectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION");
+// var connectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION");
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
     if (!string.IsNullOrEmpty(connectionString))
