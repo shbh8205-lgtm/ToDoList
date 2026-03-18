@@ -70,12 +70,19 @@ builder.Services.AddAuthorization();
 
 
 
-// במקום לקרוא מ-Render, נשים את המחרוזת ישירות (תחליף את הכוכביות בסיסמה שלך)
-var hardcodedConnectionString = "server=bs0xtmdarowtzbkwwoib-mysql.services.clever-cloud.com;port=3306;database=bs0xtmdarowtzbkwwoib;uid=upzcfm9n115abbra;pwd=RHzhMfu5mOlaJBVCbt9t;SslMode=none;";
+// קריאה ישירה ממשתני הסביבה (עוקף את builder.Configuration הבעייתי)
+var connectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION");
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
-    var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
-    options.UseMySql(hardcodedConnectionString, serverVersion);
+    if (!string.IsNullOrEmpty(connectionString))
+    {
+        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
+        options.UseMySql(connectionString, serverVersion);
+    }
+    else
+    {
+        Console.WriteLine("[CRITICAL] MY_DB_CONNECTION variable is MISSING!");
+    }
 });
 
 
