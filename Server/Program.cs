@@ -38,13 +38,24 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 3. הגדרת מסד הנתונים עם טיפול בשגיאות חיבור
+// שליפת מחרוזת החיבור
 var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
     if (!string.IsNullOrEmpty(connectionString))
     {
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+        // --- תיקון קריטי כאן ---
+        // אנחנו בונים את המחרוזת מחדש ומוודאים שרק פרמטרים נתמכים עוברים
+        var sb = new MySqlConnector.MySqlConnectionStringBuilder(connectionString);
+        
+        // הסרת פרמטרים שגורמים לשגיאות בענן
+        sb.Remove("name"); 
+        sb.Remove("Name");
+        
+        // וידוי שמות שדות סטנדרטיים
+        var finalConnectionString = sb.ConnectionString;
+
+        options.UseMySql(finalConnectionString, ServerVersion.AutoDetect(finalConnectionString));
     }
 });
 
