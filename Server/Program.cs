@@ -9,15 +9,35 @@ using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. הגדרת הפורט עבור Render - קריטי למניעת שגיאות Kestrel
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseKestrel().ConfigureKestrel(options =>
+// --- 1. הגדרות שרת ופורט (Render) ---
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(int.Parse(port));
 });
 
-// 2. שליפת סוד ה-JWT (ודא שזה מוגדר ב-Environment Variables ב-Render)
-var secretKey = builder.Configuration["Jwt:Key"] ?? "a_very_long_and_secure_default_key_for_dev";
+// --- 2. הגדרות בסיס נתונים (MySQL) ---
+// שליפה מהקונפיגורציה - ב-Render הגדר משתנה בשם: ConnectionStrings__ToDoDB
+var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
+
+builder.Services.AddDbContext<ToDoDbContext>(options => {
+    if (!string.IsNullOrEmpty(connectionString))
+    {
+        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
+        options.UseMySql(connectionString, serverVersion, mysqlOptions => 
+        {
+            mysqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+        });
+    }
+    else
+    {
+        // זריקת שגיאה ברורה כדי שלא נקבל "Login Error: Option name not supported" מבלבל
+        throw new InvalidOperationException("[CRITICAL] Database Connection String 'ToDoDB' is missing!");
+    }
+});
+
+// --- 3. אבטחה ו-JWT ---
+var secretKey = builder.Configuration["Jwt:Key"] ?? "a_very_long_and_secure_default_key_for_dev_12345";
 var key = Encoding.ASCII.GetBytes(secretKey);
 
 builder.Services.AddAuthentication(options =>
@@ -32,62 +52,14 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
         ValidateIssuer = false,
-        ValidateAudience = false
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
     };
 });
 
 builder.Services.AddAuthorization();
 
-
-
-
-// 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
-var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
-
-// // 2. הדפסת דיבאג ללוג - זה יגיד לנו מה Render באמת שולח
-// if (!string.IsNullOrEmpty(rawConnectionString))
-// {
-//     var censored = System.Text.RegularExpressions.Regex.Replace(rawConnectionString, @"password=.*?;", "password=***;", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-//     Console.WriteLine($"[DEBUG] Connection String in use: {censored}");
-// }
-
-// // 3. הגדרת ה-DbContext עם גרסה ידנית לעקיפת השגיאה
-// builder.Services.AddDbContext<ToDoDbContext>(options => {
-//     if (!string.IsNullOrEmpty(rawConnectionString))
-//     {
-//         // הגדרת גרסה 8.0.31 (מתאים לרוב שירותי הענן כמו Clever Cloud)
-//         var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
-        
-//         options.UseMySql(rawConnectionString, serverVersion, mysqlOptions => 
-//         {
-//             mysqlOptions.EnableRetryOnFailure(
-//                 maxRetryCount: 5,
-//                 maxRetryDelay: TimeSpan.FromSeconds(10),
-//                 errorNumbersToAdd: null);
-//         });
-//     }
-// });
-
-
-
-// קריאה ישירה ממשתני הסביבה (עוקף את builder.Configuration הבעייתי)
-// var connectionString = Environment.GetEnvironmentVariable("MY_DB_CONNECTION");
-
-builder.Services.AddDbContext<ToDoDbContext>(options => {
-    if (!string.IsNullOrEmpty(connectionString))
-    {
-        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
-        options.UseMySql(connectionString, serverVersion);
-    }
-    else
-    {
-        Console.WriteLine("[CRITICAL] MY_DB_CONNECTION variable is MISSING!");
-    }
-});
-
-
-
-// 4. CORS - פתוח לכולם (מתאים ל-OPTIONS 204 שראינו)
+// --- 4. CORS וכלים נוספים ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
@@ -98,17 +70,19 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// הצגת דף שגיאות מפורט גם בענן כדי שתוכל לראות מה ה-500 (רק לצורך דיבאג!)
-app.UseDeveloperExceptionPage();
-
-app.UseSwagger();
-app.UseSwaggerUI();
+// --- 5. Middleware Pipeline ---
+if (app.Environment.IsDevelopment() || true) // השארתי true כדי שתוכל לראות Swagger ב-Render לדיבאג
+{
+    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// --- Endpoints ---
+// --- 6. Endpoints ---
 
 app.MapGet("/", () => "API is Running!");
 
@@ -138,11 +112,12 @@ app.MapPost("/login", async (ToDoDbContext db, UserLogin loginData) =>
     }
     catch (Exception ex)
     {
-        // זה ידפיס ללוג של Render את השגיאה האמיתית
-        Console.WriteLine($"Login Error: {ex.Message}");
-        return Results.Problem("Internal Server Error during login");
+        Console.WriteLine($"[ERROR] Login Failed: {ex.Message}");
+        return Results.Problem("Database connection error during login.");
     }
 });
+
+// --- Items Management ---
 
 app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) => 
 {
@@ -150,8 +125,7 @@ app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) =>
     if (userIdClaim == null) return Results.Unauthorized();
 
     int userId = int.Parse(userIdClaim);
-    var userTasks = await db.Items.Where(todo => todo.UserId == userId).ToListAsync();
-    return Results.Ok(userTasks);
+    return Results.Ok(await db.Items.Where(t => t.UserId == userId).ToListAsync());
 }).RequireAuthorization();
 
 app.MapPost("/items", async (ToDoDbContext db, Item newItem, ClaimsPrincipal user) =>
@@ -197,4 +171,5 @@ app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal us
 
 app.Run();
 
+// DTOs
 public record UserLogin(string UserName, string Password);
