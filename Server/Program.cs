@@ -42,7 +42,7 @@ builder.Services.AddAuthorization();
 
 
 // 1. שליפת מחרוזת החיבור מהקונפיגורציה (מה שמוגדר ב-Render)
-var connectionString = builder.Configuration.GetConnectionString("ConnectionStrings__ToDoDB");
+var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
 
 // // 2. הדפסת דיבאג ללוג - זה יגיד לנו מה Render באמת שולח
 // if (!string.IsNullOrEmpty(rawConnectionString))
