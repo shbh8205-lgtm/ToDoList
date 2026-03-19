@@ -19,46 +19,35 @@ builder.WebHost.ConfigureKestrel(options =>
 // --- 2. הגדרות בסיס נתונים (MySQL) ---
 // 1. שליפה ישירה ללא "קסמים" של ASP.NET
 // ב-Render נגדיר מפתח בשם: DB_DIRECT
-var rawConnectionString = builder.Configuration["DB_DIRECT"];
+// --- דיבאג: הדפסת שמות משתני הסביבה כדי לראות מה Render מזריק ---
+Console.WriteLine("--- Environment Variables Check ---");
+foreach (System.Collections.DictionaryEntry de in Environment.GetVariables())
+{
+    // מדפיס רק את השמות כדי שלא נחשוף סודות בלוג
+    Console.WriteLine($"Key: {de.Key}");
+}
+Console.WriteLine("----------------------------------");
+
+// שליפה ישירה והכי פשוטה שיש
+var connectionString = Environment.GetEnvironmentVariable("DB_DIRECT");
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
-    if (!string.IsNullOrEmpty(rawConnectionString))
+    if (!string.IsNullOrEmpty(connectionString))
     {
-        var cleanCS = rawConnectionString.Trim();
-        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
+        var cleanCS = connectionString.Trim();
         
+        // הדפסת אורך המחרוזת (עוזר לדעת אם היא נחתכה או קצרה מדי)
+        Console.WriteLine($"[DEBUG] DB_DIRECT found. Length: {cleanCS.Length}");
+        
+        var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
         options.UseMySql(cleanCS, serverVersion, mysqlOptions => {
             mysqlOptions.EnableRetryOnFailure();
         });
-        
-        Console.WriteLine("[DEBUG] DB_DIRECT was found and loaded.");
     }
     else
     {
-        // זה ידפיס ללוג של Render אם המשתנה חסר
-        Console.WriteLine("[ERROR] DB_DIRECT environment variable is MISSING!");
+        Console.WriteLine("[ERROR] DB_DIRECT is NULL or EMPTY in Environment Variables!");
     }
-});
-
-// --- 3. אבטחה ו-JWT ---
-var secretKey = builder.Configuration["Jwt:Key"] ?? "a_very_long_and_secure_default_key_for_dev_12345";
-var key = Encoding.ASCII.GetBytes(secretKey);
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ClockSkew = TimeSpan.Zero
-    };
 });
 
 builder.Services.AddAuthorization();
