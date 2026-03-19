@@ -3,63 +3,45 @@ using TodoApi;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. הגדרות שרת ופורט (Render) ---
-var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(int.Parse(port));
-});
+// --- 1. הגדרות שרת (Render) ---
+// Render מעבירה את הפורט במשתנה סביבה. אם הוא לא קיים, נשתמש ב-8080 כברירת מחדל מקומית.
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // --- 2. הגדרות בסיס נתונים (MySQL) ---
-// 1. שליפה ישירה ללא "קסמים" של ASP.NET
-// ב-Render נגדיר מפתח בשם: DB_DIRECT
-var rawConnectionString = builder.Configuration["DB_DIRECT"];
+var connectionString = builder.Configuration["ConnectionStrings__ToDoDB"];
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
-    if (!string.IsNullOrEmpty(rawConnectionString))
+    if (!string.IsNullOrEmpty(connectionString))
     {
-        var cleanCS = rawConnectionString.Trim();
         var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
-        
-        options.UseMySql(cleanCS, serverVersion, mysqlOptions => {
+        options.UseMySql(connectionString.Trim(), serverVersion, mysqlOptions => {
             mysqlOptions.EnableRetryOnFailure();
         });
-        
-        Console.WriteLine("[DEBUG] DB_DIRECT was found and loaded.");
-    }
-    else
-    {
-        // זה ידפיס ללוג של Render אם המשתנה חסר
-        Console.WriteLine("[ERROR] DB_DIRECT environment variable is MISSING!");
     }
 });
 
 // --- 3. אבטחה ו-JWT ---
-var secretKey = builder.Configuration["Jwt:Key"] ?? "a_very_long_and_secure_default_key_for_dev_12345";
-var key = Encoding.ASCII.GetBytes(secretKey);
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "a_very_long_and_secure_default_key_for_dev_123456789";
+var keyBytes = Encoding.ASCII.GetBytes(jwtKey);
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ClockSkew = TimeSpan.Zero
-    };
-});
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -75,69 +57,65 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // --- 5. Middleware Pipeline ---
-if (app.Environment.IsDevelopment() || true) // השארתי true כדי שתוכל לראות Swagger ב-Render לדיבאג
-{
-    app.UseDeveloperExceptionPage();
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// מאפשר Swagger גם ב-Production לצרכי דיבאג ב-Render
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// --- 6. Endpoints ---
+// --- 6. Helpers ---
+static int? GetUserId(ClaimsPrincipal user)
+{
+    var claim = user.FindFirst("id")?.Value;
+    return int.TryParse(claim, out var id) ? id : null;
+}
 
-app.MapGet("/", () => "API is Running!");
+// --- 7. Endpoints ---
+
+app.MapGet("/", () => "API is Running!").AllowAnonymous();
 
 app.MapPost("/login", async (ToDoDbContext db, UserLogin loginData) =>
 {
-    try 
+    var foundUser = await db.Users
+        .FirstOrDefaultAsync(u => u.Name == loginData.UserName && u.Password == loginData.Password);
+
+    if (foundUser is null) return Results.Unauthorized();
+
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var tokenDescriptor = new SecurityTokenDescriptor
     {
-        var foundUser = await db.Users
-            .FirstOrDefaultAsync(u => u.Name == loginData.UserName && u.Password == loginData.Password);
+        Subject = new ClaimsIdentity(new[] 
+        { 
+            new Claim("id", foundUser.Id.ToString()),
+            new Claim(ClaimTypes.Name, foundUser.Name)
+        }),
+        Expires = DateTime.UtcNow.AddDays(7),
+        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256Signature)
+    };
 
-        if (foundUser is null) return Results.Unauthorized();
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(new[] 
-            { 
-                new Claim("id", foundUser.Id.ToString()),
-                new Claim(ClaimTypes.Name, foundUser.Name)
-            }),
-            Expires = DateTime.UtcNow.AddHours(24),
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return Results.Ok(new { token = tokenHandler.WriteToken(token) });
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[ERROR] Login Failed: {ex.Message}");
-        return Results.Problem("Database connection error during login.");
-    }
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+    return Results.Ok(new { token = tokenHandler.WriteToken(token) });
 });
 
 // --- Items Management ---
 
 app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) => 
 {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (userIdClaim == null) return Results.Unauthorized();
+    var userId = GetUserId(user);
+    if (userId == null) return Results.Unauthorized();
 
-    int userId = int.Parse(userIdClaim);
-    return Results.Ok(await db.Items.Where(t => t.UserId == userId).ToListAsync());
+    var items = await db.Items.Where(t => t.UserId == userId).ToListAsync();
+    return Results.Ok(items);
 }).RequireAuthorization();
 
 app.MapPost("/items", async (ToDoDbContext db, Item newItem, ClaimsPrincipal user) =>
 {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (userIdClaim == null) return Results.Unauthorized();
+    var userId = GetUserId(user);
+    if (userId == null) return Results.Unauthorized();
 
-    newItem.UserId = int.Parse(userIdClaim);
+    newItem.UserId = userId.Value;
     db.Items.Add(newItem);
     await db.SaveChangesAsync();
     return Results.Created($"/items/{newItem.Id}", newItem);
@@ -145,9 +123,8 @@ app.MapPost("/items", async (ToDoDbContext db, Item newItem, ClaimsPrincipal use
 
 app.MapPut("/items/{id}", async (ToDoDbContext db, int id, Item updatedItem, ClaimsPrincipal user) =>
 {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim);
+    var userId = GetUserId(user);
+    if (userId == null) return Results.Unauthorized();
 
     var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
     if (item is null) return Results.NotFound();
@@ -161,9 +138,8 @@ app.MapPut("/items/{id}", async (ToDoDbContext db, int id, Item updatedItem, Cla
 
 app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal user) =>
 {
-    var userIdClaim = user.FindFirst("id")?.Value;
-    if (userIdClaim == null) return Results.Unauthorized();
-    int userId = int.Parse(userIdClaim);
+    var userId = GetUserId(user);
+    if (userId == null) return Results.Unauthorized();
 
     var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
     if (item is null) return Results.NotFound();
