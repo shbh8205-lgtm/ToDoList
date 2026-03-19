@@ -18,21 +18,27 @@ builder.WebHost.ConfigureKestrel(options =>
 
 // --- 2. הגדרות בסיס נתונים (MySQL) ---
 // שליפה מהקונפיגורציה - ב-Render הגדר משתנה בשם: ConnectionStrings__ToDoDB
-var connectionString = builder.Configuration.GetConnectionString("ToDoDB");
+// 1. שליפה ישירה מהקונפיגורציה לפי המפתח המדויק
+// ב-Render המפתח יהיה: ToDoDB_Connection
+var connectionString = builder.Configuration["ToDoDB_Connection"];
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
+    // 2. וידוי שהמחרוזת קיימת לפני שמנסים להשתמש בה
     if (!string.IsNullOrEmpty(connectionString))
     {
+        // ניקוי רווחים לבנים (White-spaces) שעלולים להיכנס בהעתקה
+        var cleanCS = connectionString.Trim();
         var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
-        options.UseMySql(connectionString, serverVersion, mysqlOptions => 
-        {
-            mysqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+        
+        options.UseMySql(cleanCS, serverVersion, mysqlOptions => {
+            // הגדרה חשובה לסביבת ענן - ניסיון התחברות חוזר במקרה של ניתוק רגעיו
+            mysqlOptions.EnableRetryOnFailure();
         });
     }
-    else
+    else 
     {
-        // זריקת שגיאה ברורה כדי שלא נקבל "Login Error: Option name not supported" מבלבל
-        throw new InvalidOperationException("[CRITICAL] Database Connection String 'ToDoDB' is missing!");
+        // הדפסה ברורה ללוג של Render כדי שתדע אם המשתנה לא נקלט
+        Console.WriteLine("[CRITICAL] Database configuration 'ToDoDB_Connection' is missing!");
     }
 });
 
