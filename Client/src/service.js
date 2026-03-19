@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = "https://todolistserver-bznf.onrender.com";;
+axios.defaults.baseURL = "https://todolistserver-bznf.onrender.com/";;
 
 // --- מנגנון הזרקת הטוקן לכל בקשה ---
 axios.interceptors.request.use(config => {
