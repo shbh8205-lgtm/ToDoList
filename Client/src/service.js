@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = process.env.REACT_APP_API_URL //|| "http://localhost:8080/";
+axios.defaults.baseURL = process.env.REACT_APP_API_URL;
 
 // --- מנגנון הזרקת הטוקן לכל בקשה ---
 axios.interceptors.request.use(config => {
@@ -26,13 +26,15 @@ axios.interceptors.response.use(
 const taskService = {
   // --- הוספה: פונקציית התחברות ---
   login: async (userName, password) => {
+    console.log(process.env.REACT_APP_API_URL);
+    
     const result = await axios.post("/login", { userName, password });
     if (result.data.token) {
       localStorage.setItem('token', result.data.token); // שמירה בדפדפן
     }
     return result.data;
   },
-  
+
   getTasks: async () => {
     try {
       const result = await axios.get("/items");
