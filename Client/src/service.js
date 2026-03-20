@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || "http://localhost:8080/";
+axios.defaults.baseURL = process.env.REACT_APP_API_URL// || "http://localhost:8080/";
 
 // --- מנגנון הזרקת הטוקן לכל בקשה ---
 axios.interceptors.request.use(config => {
