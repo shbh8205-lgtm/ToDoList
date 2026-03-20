@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+axios.defaults.baseURL = process.env.REACT_APP_API_ADRESS || process.env.REACT_APP_API_URL;
 
 // --- מנגנון הזרקת הטוקן לכל בקשה ---
 axios.interceptors.request.use(config => {
@@ -26,7 +26,6 @@ axios.interceptors.response.use(
 const taskService = {
   // --- הוספה: פונקציית התחברות ---
   login: async (userName, password) => {
-    console.log(process.env.REACT_APP_API_URL);
     
     const result = await axios.post("/login", { userName, password });
     if (result.data.token) {
