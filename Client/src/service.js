@@ -51,10 +51,8 @@ const taskService = {
   },
 
   // הוספת משימה חדשה - POST
-  addTask: async (name) => {
-    console.log({name});
-    
-    const result = await axios.post("/items", { name, isComplete: false });
+  addTask: async (taskName) => {    
+    const result = await axios.post("/items", { taskName, isComplete: false });
     return result.data;
   },
 
