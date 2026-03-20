@@ -13,14 +13,16 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // --- 2. הגדרות בסיס נתונים (MySQL) ---
-var connectionString = builder.Configuration.GetConnectionString("ToDoDB") 
+var connectionString = builder.Configuration.GetConnectionString("ToDoDB")
                         ?? builder.Configuration["ConnectionStrings__ToDoDB"];
 
-builder.Services.AddDbContext<ToDoDbContext>(options => {
+builder.Services.AddDbContext<ToDoDbContext>(options =>
+{
     if (!string.IsNullOrEmpty(connectionString))
     {
         var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
-        options.UseMySql(connectionString.Trim(), serverVersion, mysqlOptions => {
+        options.UseMySql(connectionString.Trim(), serverVersion, mysqlOptions =>
+        {
             mysqlOptions.EnableRetryOnFailure();
         });
     }
@@ -68,8 +70,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
     context.Response.Headers["Pragma"] = "no-cache";
     context.Response.Headers["Expires"] = "0";
-    context.Response.Headers.Remove("ETag"); 
-    
+    context.Response.Headers.Remove("ETag");
+
     await next(); // חשוב: להשתמש ב-await next() בתוך פונקציה אסינכרונית
 });
 
@@ -90,8 +92,8 @@ app.MapPost("/login", async (ToDoDbContext db, UserLogin loginData) =>
     var tokenHandler = new JwtSecurityTokenHandler();
     var tokenDescriptor = new SecurityTokenDescriptor
     {
-        Subject = new ClaimsIdentity(new[] 
-        { 
+        Subject = new ClaimsIdentity(new[]
+        {
             new Claim("id", foundUser.Id.ToString()),
             new Claim(ClaimTypes.Name, foundUser.Name)
         }),
@@ -103,10 +105,15 @@ app.MapPost("/login", async (ToDoDbContext db, UserLogin loginData) =>
     return Results.Ok(new { token = tokenHandler.WriteToken(token) });
 });
 
-app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) => 
+app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) =>
 {
     var userId = GetUserId(user);
     if (userId == null) return Results.Unauthorized();
+
+    // בדיקה אם הבעיה היא בסינון המשתמש - האם בכלל יש פריטים בטבלה?
+    var allItemsCount = await db.Items.CountAsync();
+    Console.WriteLine($"Total items in DB: {allItemsCount}");
+
 
     var items = await db.Items.Where(t => t.UserId == userId).ToListAsync();
     return Results.Ok(items);
@@ -152,7 +159,6 @@ app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal us
 }).RequireAuthorization();
 
 // --- 7. הפעלה סופית ---
-// רק Run אחד בסוף הקובץ!
 app.Run();
 
 // --- 8. Helpers ---
