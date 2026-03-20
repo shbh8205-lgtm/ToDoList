@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import service from './service.js';
-import Login from './Login'; // וודאי שיצרת את הקובץ הזה כפי שכתבתי קודם
-
+import Login from './Login'; 
 function App() {
   const [newTodo, setNewTodo] = useState("");
   const [todos, setTodos] = useState([]);

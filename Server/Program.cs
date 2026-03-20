@@ -67,6 +67,27 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
+
+
+// Middleware לביטול Caching ו-ETags
+app.Use((context, next) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    context.Response.Headers["Pragma"] = "no-cache";
+    context.Response.Headers["Expires"] = "0";
+    context.Response.Headers.Remove("ETag"); // הסרת ה-ETag כדי למנוע 304
+    
+    return next();
+});
+
+
+
+
+
+
+
+
+
 // --- 6. Helpers ---
 static int? GetUserId(ClaimsPrincipal user)
 {
