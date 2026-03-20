@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
 
 namespace TodoApi;
 
@@ -18,43 +17,47 @@ public partial class ToDoDbContext : DbContext
 
     public virtual DbSet<Item> Items { get; set; }
     public virtual DbSet<User> Users { get; set; }
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        => optionsBuilder.UseMySql("name=ToDoDB", Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.44-mysql"));
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            // במקום להסתמך על "name=", נשתמש במחרוזת ישירה או נמשוך אותה בצורה מפורשת
+            // לצורך יצירת המיגרציה, EF צריך לדעת באיזה Database Driver להשתמש.
+            var serverVersion = new MySqlServerVersion(new Version(8, 0, 31));
+
+            // כאן תוכל לשים את מחרוזת החיבור המקומית שלך זמנית, 
+            // או להשתמש בפורמט בטוח יותר:
+            optionsBuilder.UseMySql("Server=localhost;Database=ToDoDB;Uid=root;Pwd=root;", serverVersion);
+        }
+    }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // הגדרות כלליות של מסד הנתונים (Charset ו-Collation)
-        modelBuilder
-            .UseCollation("utf8mb4_0900_ai_ci")
-            .HasCharSet("utf8mb4");
+        // הגדרות Charset ו-Collation בצורה שתואמת את כל הגרסאות
+        modelBuilder.HasCharSet("utf8mb4");
 
-        // הגדרת ישות המשימות (Item)
         modelBuilder.Entity<Item>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
-            entity.ToTable("item"); // מוודא ששם הטבלה ב-SQL הוא item
+            entity.ToTable("item");
 
-            entity.Property(e => e.Name)
+            entity.Property(e => e.Id).ValueGeneratedOnAdd(); // זה ה-Auto Increment התקני
+
+            entity.Property(e => e.TaskName)
                   .HasMaxLength(100)
-                  .IsRequired(); // שם המשימה הוא שדה חובה
-
-            // --- הוספת הקשר למשתמש (Foreign Key) ---
-            entity.HasOne(i => i.User)           // למשימה יש משתמש אחד
-                  .WithMany(u => u.Items)        // למשתמש יש הרבה משימות
-                  .HasForeignKey(i => i.UserId)  // השדה המקשר
-                  .OnDelete(DeleteBehavior.Cascade) // מחיקת משתמש תמחוק את משימותיו
-                  .HasConstraintName("FK_Item_User"); // שם למפתח הזר ב-SQL
+                  .IsRequired();
         });
 
-        // הגדרת ישות המשתמשים (אופציונלי - כדי לוודא ששם הטבלה תואם)
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("users"); 
+            entity.ToTable("users");
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
         });
 
+        // קריאה למתודה החלקית מהקובץ Manual שפתחנו
         OnModelCreatingPartial(modelBuilder);
     }
-    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }

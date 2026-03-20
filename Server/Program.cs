@@ -14,7 +14,9 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // --- 2. הגדרות בסיס נתונים (MySQL) ---
-var connectionString = builder.Configuration["ConnectionStrings__ToDoDB"];
+var connectionString = builder.Configuration.GetConnectionString("ToDoDB") 
+                       ?? builder.Configuration["ConnectionStrings__ToDoDB"];
+
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
     if (!string.IsNullOrEmpty(connectionString))
@@ -129,7 +131,7 @@ app.MapPut("/items/{id}", async (ToDoDbContext db, int id, Item updatedItem, Cla
     var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id && i.UserId == userId);
     if (item is null) return Results.NotFound();
 
-    item.Name = updatedItem.Name;
+    item.TaskName = updatedItem.TaskName;
     item.IsComplete = updatedItem.IsComplete;
 
     await db.SaveChangesAsync();

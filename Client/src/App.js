@@ -87,7 +87,7 @@ function App() {
                   checked={todo.isComplete} 
                   onChange={(e) => updateCompleted(todo, e.target.checked)} 
                 />
-                <label>{todo.name}</label>
+                <label>{todo.taskName}</label>
                 <button className="destroy" onClick={() => deleteTodo(todo.id)}></button>
               </div>
             </li>
