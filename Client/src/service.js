@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 axios.defaults.baseURL = process.env.REACT_APP_API_ADRESS || process.env.REACT_APP_API_URL;
+
 console.log(axios.defaults.baseURL);
 
 // --- מנגנון הזרקת הטוקן לכל בקשה ---
@@ -51,6 +52,8 @@ const taskService = {
 
   // הוספת משימה חדשה - POST
   addTask: async (name) => {
+    console.log({name});
+    
     const result = await axios.post("/items", { name, isComplete: false });
     return result.data;
   },

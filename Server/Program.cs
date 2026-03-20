@@ -121,6 +121,7 @@ app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) =>
 
 app.MapPost("/items", async (ToDoDbContext db, Item newItem, ClaimsPrincipal user) =>
 {
+    
     var userId = GetUserId(user);
     if (userId == null) return Results.Unauthorized();
 
