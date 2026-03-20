@@ -80,7 +80,8 @@ app.Use((context, next) =>
     return next();
 });
 
-
+app.MapControllers();
+app.Run();
 
 
 
