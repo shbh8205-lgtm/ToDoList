@@ -9,14 +9,12 @@ using System.IdentityModel.Tokens.Jwt;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- 1. הגדרות שרת (Render) ---
-// Render מעבירה את הפורט במשתנה סביבה. אם הוא לא קיים, נשתמש ב-8080 כברירת מחדל מקומית.
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // --- 2. הגדרות בסיס נתונים (MySQL) ---
 var connectionString = builder.Configuration.GetConnectionString("ToDoDB") 
-                       ?? builder.Configuration["ConnectionStrings__ToDoDB"];
-
+                        ?? builder.Configuration["ConnectionStrings__ToDoDB"];
 
 builder.Services.AddDbContext<ToDoDbContext>(options => {
     if (!string.IsNullOrEmpty(connectionString))
@@ -59,44 +57,26 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // --- 5. Middleware Pipeline ---
-// מאפשר Swagger גם ב-Production לצרכי דיבאג ב-Render
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors("AllowAll");
-app.UseAuthentication();
-app.UseAuthorization();
 
-
-
-// Middleware לביטול Caching ו-ETags
-app.Use((context, next) =>
+// הוספת ה-Middleware לביטול ה-Cache וה-ETag (כדי למנוע 304 ב-Render)
+app.Use(async (context, next) =>
 {
     context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
     context.Response.Headers["Pragma"] = "no-cache";
     context.Response.Headers["Expires"] = "0";
-    context.Response.Headers.Remove("ETag"); // הסרת ה-ETag כדי למנוע 304
+    context.Response.Headers.Remove("ETag"); 
     
-    return next();
+    await next(); // חשוב: להשתמש ב-await next() בתוך פונקציה אסינכרונית
 });
 
-app.MapControllers();
-app.Run();
+app.UseAuthentication();
+app.UseAuthorization();
 
-
-
-
-
-
-
-// --- 6. Helpers ---
-static int? GetUserId(ClaimsPrincipal user)
-{
-    var claim = user.FindFirst("id")?.Value;
-    return int.TryParse(claim, out var id) ? id : null;
-}
-
-// --- 7. Endpoints ---
+// --- 6. Endpoints (הגדרת הנתיבים) ---
 
 app.MapGet("/", () => "API is Running!").AllowAnonymous();
 
@@ -122,8 +102,6 @@ app.MapPost("/login", async (ToDoDbContext db, UserLogin loginData) =>
     var token = tokenHandler.CreateToken(tokenDescriptor);
     return Results.Ok(new { token = tokenHandler.WriteToken(token) });
 });
-
-// --- Items Management ---
 
 app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) => 
 {
@@ -173,7 +151,16 @@ app.MapDelete("/items/{id}", async (ToDoDbContext db, int id, ClaimsPrincipal us
     return Results.NoContent();
 }).RequireAuthorization();
 
+// --- 7. הפעלה סופית ---
+// רק Run אחד בסוף הקובץ!
 app.Run();
+
+// --- 8. Helpers ---
+static int? GetUserId(ClaimsPrincipal user)
+{
+    var claim = user.FindFirst("id")?.Value;
+    return int.TryParse(claim, out var id) ? id : null;
+}
 
 // DTOs
 public record UserLogin(string UserName, string Password);
