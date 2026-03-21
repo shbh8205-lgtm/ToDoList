@@ -28,12 +28,28 @@ axios.interceptors.response.use(
 const taskService = {
   // --- הוספה: פונקציית התחברות ---
   login: async (userName, password) => {
-    
+
     const result = await axios.post("/login", { userName, password });
     if (result.data.token) {
       localStorage.setItem('token', result.data.token); // שמירה בדפדפן
     }
     return result.data;
+  },
+
+  register: async (userName, password) => {
+    try {
+      const result = await axios.post("/register", { userName, password });
+
+      if (result.data.token) {
+        localStorage.setItem('token', result.data.token);
+      }
+
+      return result.data;
+    } catch (error) {
+      // טיפול בשגיאות (למשל אם המשתמש כבר קיים)
+      console.error("Registration failed:", error.response?.data || error.message);
+      throw error;
+    }
   },
 
   getTasks: async () => {
@@ -51,7 +67,7 @@ const taskService = {
   },
 
   // הוספת משימה חדשה - POST
-  addTask: async (taskName) => {    
+  addTask: async (taskName) => {
     const result = await axios.post("/items", { taskName, isComplete: false });
     return result.data;
   },

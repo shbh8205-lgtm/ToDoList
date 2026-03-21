@@ -82,6 +82,42 @@ app.UseAuthorization();
 
 app.MapGet("/", () => "API is Running!").AllowAnonymous();
 
+
+app.MapPost("/register", async (ToDoDbContext db, UserLogin loginData) =>
+{
+    // 1. בדיקה האם שם המשתמש כבר תפוס
+    var userExists = await db.Users.AnyAsync(u => u.Name == loginData.UserName);
+    if (userExists)
+    {
+        return Results.BadRequest(new { message = "User already exists" });
+    }
+
+    // 2. יצירת אובייקט המשתמש החדש
+    var newUser = new User
+    {
+        Name = loginData.UserName,
+        Password = loginData.Password
+    };
+
+    // 3. שמירה למסד הנתונים
+    db.Users.Add(newUser);
+    await db.SaveChangesAsync();
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var tokenDescriptor = new SecurityTokenDescriptor
+    {
+        Subject = new ClaimsIdentity(new[]
+        {
+            new Claim("id", newUser.Id.ToString()),
+            new Claim(ClaimTypes.Name, newUser.Name)
+        }),
+        Expires = DateTime.UtcNow.AddDays(7),
+        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256Signature)
+    };
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+    return Results.Ok(new { token = tokenHandler.WriteToken(token) });
+    // return Results.Created($"/users/{newUser.Id}", new { message = "User registered successfully" });
+});
+
 app.MapPost("/login", async (ToDoDbContext db, UserLogin loginData) =>
 {
     var foundUser = await db.Users
@@ -121,7 +157,7 @@ app.MapGet("/items", async (ToDoDbContext db, ClaimsPrincipal user) =>
 
 app.MapPost("/items", async (ToDoDbContext db, Item newItem, ClaimsPrincipal user) =>
 {
-    
+
     var userId = GetUserId(user);
     if (userId == null) return Results.Unauthorized();
 
