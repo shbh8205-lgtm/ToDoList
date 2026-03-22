@@ -61,11 +61,9 @@ function App() {
     <section className="todoapp">
       <header className="header">
         <div style={{ 
-  display: 'flex', 
-  justifyContent: 'space-between', 
-  alignItems: 'center',    // מיישר אותם לאותו קו גובה
-  flexWrap: 'wrap',        // אם אין מקום, האלמנט ירד שורה במקום להימחץ
-  padding: '10px' 
+  display: 'block',    // מבטל את ה-Flex זמנית
+  textAlign: 'center', // ממרכז את הטקסט
+  border: '1px solid red' // מסגרת שתראה לנו איפה האלמנט נגמר
 }}>
              <h1>{`${localStorage.getItem('userName')}'s todos`}</h1>
              <button onClick={handleLogout} className="logout-btn">התנתק</button>
