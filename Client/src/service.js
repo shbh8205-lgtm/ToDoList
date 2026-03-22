@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = process.env.REACT_APP_API_ADRESS || process.env.REACT_APP_API_URL;
+axios.defaults.baseURL = (process.env.REACT_APP_API_ADRESS || process.env.REACT_APP_API_URL).trim();
 
 console.log("the server: "+axios.defaults.baseURL);
 console.log("All env vars:", process.env);
