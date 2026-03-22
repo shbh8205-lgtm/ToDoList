@@ -61,13 +61,25 @@ function App() {
     <section className="todoapp">
       <header className="header">
         <div style={{ 
-  display: 'block',    // מבטל את ה-Flex זמנית
-  textAlign: 'center', // ממרכז את הטקסט
-  border: '1px solid red' // מסגרת שתראה לנו איפה האלמנט נגמר
-}}>
-             <h1>{`${localStorage.getItem('userName')}'s todos`}</h1>
-             <button onClick={handleLogout} className="logout-btn">התנתק</button>
-        </div>
+    display: 'flex', 
+    flexDirection: 'column', // מסדר את הכותרת והכפתור אחד מעל השני
+    alignItems: 'center', 
+    padding: '20px',
+    gap: '10px' 
+  }}>
+    <h1 style={{ 
+      position: 'static', // מבטל את ה-absolute מה-CSS החיצוני
+      inset: 'auto',      // מאפס מיקומים ישנים
+      marginTop: '0',     // מוודא שאין Margin שדוחף אותו
+      display: 'block' 
+    }}>
+      {`${localStorage.getItem('userName')}'s todos`}
+    </h1>
+    
+    <button onClick={handleLogout} className="logout-btn">
+      התנתק
+    </button>
+  </div>
         <form onSubmit={createTodo}>
           <input 
             className="new-todo" 
