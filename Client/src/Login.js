@@ -11,13 +11,12 @@ const Login = ({ onLoginSuccess }) => {
         try {
             if (isRegisterMode) {
                 // קריאה לפונקציית ההרשמה שהוספנו ל-service
-                await taskService.register(username, password);
+                await taskService.register(username, password);      
                 alert("נרשמת בהצלחה!");
-                // setIsRegisterMode(false); // מעביר חזרה למסך כניסה לאחר הרשמה
             } else
                 await taskService.login(username, password);
             onLoginSuccess();
-
+            localstorage.setItem("userName", username);
         } catch (err) {
             const action = isRegisterMode ? "הרשמה" : "התחברות";
             alert(`שגיאה ב${action}: בדוק את הפרטים ונסה שוב`);
