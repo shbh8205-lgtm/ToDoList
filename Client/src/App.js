@@ -60,7 +60,13 @@ function App() {
   return (
     <section className="todoapp">
       <header className="header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px' }}>
+        <div style={{ 
+  display: 'flex', 
+  justifyContent: 'space-between', 
+  alignItems: 'center',    // מיישר אותם לאותו קו גובה
+  flexWrap: 'wrap',        // אם אין מקום, האלמנט ירד שורה במקום להימחץ
+  padding: '10px' 
+}}>
              <h1>{`${localStorage.getItem('userName')}'s todos`}</h1>
              <button onClick={handleLogout} className="logout-btn">התנתק</button>
         </div>
