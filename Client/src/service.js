@@ -3,7 +3,7 @@ import axios from 'axios';
 axios.defaults.baseURL = process.env.REACT_APP_API_ADRESS || process.env.REACT_APP_API_URL;
 
 console.log("the server: "+axios.defaults.baseURL);
-
+console.log("All env vars:", process.env);
 // --- מנגנון הזרקת הטוקן לכל בקשה ---
 axios.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
