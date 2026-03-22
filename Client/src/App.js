@@ -4,7 +4,6 @@ import Login from './Login';
 function App() {
   const [newTodo, setNewTodo] = useState("");
   const [todos, setTodos] = useState([]);
-  const [user, setUser] = useState();
   // --- הוספה: ניהול מצב התחברות ---
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
@@ -64,7 +63,7 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px' }}>
              <h1>todos</h1>
              <button onClick={handleLogout} className="logout-btn">התנתק</button>
-  <h4>`המשימות של${user}`</h4>
+  <h4>`המשימות של${localStorage.getItem(userName)}`</h4>
         </div>
         <form onSubmit={createTodo}>
           <input 
