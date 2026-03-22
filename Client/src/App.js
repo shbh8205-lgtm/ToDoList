@@ -63,7 +63,7 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px' }}>
              <h1>todos</h1>
              <button onClick={handleLogout} className="logout-btn">התנתק</button>
-  <h4>`המשימות של${localStorage.getItem(userName)}`</h4>
+  <h4>{`המשימות של ${localStorage.getItem('userName')}`}</h4>
         </div>
         <form onSubmit={createTodo}>
           <input 
