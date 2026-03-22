@@ -59,65 +59,60 @@ function App() {
 
   return (
     <section className="todoapp">
-      <header className="header">
-        <div style={{ 
-    display: 'flex', 
-    flexDirection: 'column', // מסדר את הכותרת והכפתור אחד מעל השני
-    alignItems: 'center', 
-    padding: '20px',
-    gap: '10px' 
-  }}>
-    <h1 style={{ 
-      position: 'static', // מבטל את ה-absolute מה-CSS החיצוני
-      inset: 'auto',      // מאפס מיקומים ישנים
-      marginTop: '0',     // מוודא שאין Margin שדוחף אותו
-      display: 'block' 
+  <header className="header">
+    {/* קונטיינר עליון לכותרת וכפתור התנתקות */}
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      padding: '20px',
+      gap: '10px' 
     }}>
-      {`${localStorage.getItem('userName')}'s todos`}
-    </h1>
-    
-    <button onClick={handleLogout} className="logout-btn">
-      התנתק
-    </button>
-  </div>
-        <form onSubmit={createTodo}>
-          <input 
-            className="new-todo" 
-            placeholder="Well, let's take on the day" 
-            value={newTodo} 
-            onChange={(e) => setNewTodo(e.target.value)} 
-          />
-        </form>
-      </header>
-        <form onSubmit={createTodo}>
-          <input 
-            className="new-todo" 
-            placeholder="Well, let's take on the day" 
-            value={newTodo} 
-            onChange={(e) => setNewTodo(e.target.value)} 
-          />
-        </form>
-      </header>
+      <h1 style={{ 
+        position: 'static', // דורס את ה-absolute מה-CSS החיצוני
+        inset: 'auto', 
+        marginTop: '0', 
+        display: 'block',
+        fontSize: '40px' // התאמת גודל למבנה החדש
+      }}>
+        {`${localStorage.getItem('userName') || 'User'}'s todos`}
+      </h1>
       
-      <section className="main" style={{ display: "block" }}>
-        <ul className="todo-list">
-          {todos.map(todo => (
-            <li className={todo.isComplete ? "completed" : ""} key={todo.id}>
-              <div className="view">
-                <input 
-                  className="toggle" 
-                  type="checkbox" 
-                  checked={todo.isComplete} 
-                  onChange={(e) => updateCompleted(todo, e.target.checked)} 
-                />
-                <label>{todo.taskName}</label>
-                <button className="destroy" onClick={() => deleteTodo(todo.id)}></button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </section>
+      <button onClick={handleLogout} className="logout-btn" style={{ cursor: 'pointer' }}>
+        התנתק
+      </button>
+    </div>
+
+    {/* טופס הזנת משימה חדשה - מופיע רק פעם אחת */}
+    <form onSubmit={createTodo}>
+      <input 
+        className="new-todo" 
+        placeholder="Well, let's take on the day" 
+        value={newTodo} 
+        onChange={(e) => setNewTodo(e.target.value)} 
+      />
+    </form>
+  </header>
+  
+  <section className="main" style={{ display: "block" }}>
+    <ul className="todo-list">
+      {todos.map(todo => (
+        <li className={todo.isComplete ? "completed" : ""} key={todo.id}>
+          <div className="view">
+            <input 
+              className="toggle" 
+              type="checkbox" 
+              checked={todo.isComplete} 
+              onChange={(e) => updateCompleted(todo, e.target.checked)} 
+            />
+            <label>{todo.taskName}</label>
+            <button className="destroy" onClick={() => deleteTodo(todo.id)}></button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </section>
+</section>
   );
 }
 
