@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-axios.defaults.baseURL = (process.env.REACT_APP_SERVER_URL || process.env.REACT_APP_API_URL).trim();
+axios.defaults.baseURL = https://todolistserver-bznf.onrender.com
+// (process.env.REACT_APP_SERVER_URL || process.env.REACT_APP_API_URL).trim();
 
 console.log("the server: "+axios.defaults.baseURL);
 console.log("All env vars:", process.env);
