@@ -61,7 +61,7 @@ function App() {
     <section className="todoapp">
       <header className="header">
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px' }}>
-             <h1>{`${localStorage.getItem('userName')}'s todos}</h1>
+             <h1>{`${localStorage.getItem('userName')}'s todos`}</h1>
              <button onClick={handleLogout} className="logout-btn">התנתק</button>
         </div>
         <form onSubmit={createTodo}>
