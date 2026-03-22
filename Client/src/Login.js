@@ -16,7 +16,7 @@ const Login = ({ onLoginSuccess }) => {
             } else
                 await taskService.login(username, password);
             onLoginSuccess();
-            localstorage.setItem("userName", username);
+            localStorage.setItem("userName", username);
         } catch (err) {
             const action = isRegisterMode ? "הרשמה" : "התחברות";
             alert(`שגיאה ב${action}: בדוק את הפרטים ונסה שוב`);
