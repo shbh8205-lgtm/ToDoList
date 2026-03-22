@@ -77,6 +77,15 @@ function App() {
           />
         </form>
       </header>
+        <form onSubmit={createTodo}>
+          <input 
+            className="new-todo" 
+            placeholder="Well, let's take on the day" 
+            value={newTodo} 
+            onChange={(e) => setNewTodo(e.target.value)} 
+          />
+        </form>
+      </header>
       
       <section className="main" style={{ display: "block" }}>
         <ul className="todo-list">
